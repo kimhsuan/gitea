@@ -2,6 +2,32 @@
 
 This project automates the deployment and management of a Gitea service on Google Cloud Platform (GCP) using Terraform and Docker Compose. It emphasizes modularity, security, and automation.
 
+## Architecture
+
+```mermaid
+%%{init: {'theme': 'default'} }%%
+graph TD
+  subgraph "Client"
+    User[User]
+  end
+
+  subgraph "Cloudflare"
+    DNS[DNS]
+    CDN[CDN/WAF]
+    Tunnel[Cloudflare Tunnel]
+  end
+
+  subgraph "Google Compute Engine Instance"
+    Cloudflared[cloudflared container]
+    Gitea[gitea container]
+  end
+
+  User -- DNS Query --> DNS
+  User -- HTTPS Request --> CDN
+  Cloudflared == Secure Tunnel ==> Tunnel
+  Tunnel -. HTTP Request .-> Cloudflared -- HTTP Request --> Gitea
+```
+
 ---
 
 ## Terraform Cloud Integration
