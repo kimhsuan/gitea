@@ -1,0 +1,47 @@
+#cloud-config
+%{ if length(attached_disks) > 0 ~}
+fs_setup:
+%{ for disk in attached_disks }
+- cmd: mkfs -t %(filesystem)s -L %(label)s -m 0 -E lazy_itable_init=0,lazy_journal_init=0,discard %(device)s
+  device: /dev/disk/by-id/google-${disk.device_name}
+  filesystem: "ext4"
+  label: ${disk.label}
+  partition: any
+%{ endfor ~}
+mounts:
+%{ for disk in attached_disks ~}
+- [ "LABEL=${disk.label}", "${disk.mount_path}", "ext4", "discard,defaults", "0", "2" ]
+%{ endfor ~}
+%{ endif ~}
+users:
+- name: user
+  uid: 1000
+  gid: 1001
+  groups: google-sudoers
+  lock_passwd: true
+  shell: /bin/bash
+write_files:
+- path: /etc/docker/daemon.json
+  permissions: 0644
+  owner: root:root
+  content: |
+    {
+      "data-root": "/var/lib/docker",
+      "log-opts": {
+        "max-size": "50m",
+        "max-file": "3"
+      },
+      "registry-mirrors": [
+        "https://mirror.gcr.io"
+      ]
+    }
+- path: /etc/systemd/system/docker.service.d/override.conf
+  permissions: 0644
+  owner: root:root
+  content: |
+    [Service]
+    ExecStart=
+    ExecStart=/usr/bin/dockerd -H fd:// -H tcp://127.0.0.1:2375 --containerd=/run/containerd/containerd.sock
+runcmd:
+- |
+  curl -fsSL https://get.docker.com | sudo bash -s -- --version $${DOCKER_VERSION:-"28"}

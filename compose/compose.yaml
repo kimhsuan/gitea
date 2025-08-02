@@ -1,0 +1,8 @@
+name: gitea
+
+networks:
+  net:
+
+include:
+  - compose.cloudflared.yaml
+  - compose.gitea.yml

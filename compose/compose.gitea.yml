@@ -1,0 +1,31 @@
+services:
+  gitea:
+    image: gitea/gitea:1.22.6
+    restart: always
+    networks:
+      - net
+    volumes:
+      - /data/gitea:/data
+    environment:
+      GITEA__server__DISABLE_SSH: ${GITEA__server__DISABLE_SSH:-true}
+      GITEA__server__DOMAIN: ${GITEA__server__DOMAIN:-localhost}
+      GITEA__server__ROOT_URL: ${GITEA__server__ROOT_URL}
+      GITEA__service__DISABLE_REGISTRATION: ${GITEA__service__DISABLE_REGISTRATION:-true}
+      GITEA__service__REQUIRE_SIGNIN_VIEW: ${GITEA__service__REQUIRE_SIGNIN_VIEW:-true}
+      GITEA__service__DEFAULT_KEEP_EMAIL_PRIVATE: ${GITEA__service__DEFAULT_KEEP_EMAIL_PRIVATE:-true}
+      GITEA__openid__ENABLE_OPENID_SIGNIN: ${GITEA__openid__ENABLE_OPENID_SIGNIN:-false}
+      GITEA__openid__ENABLE_OPENID_SIGNUP: ${GITEA__openid__ENABLE_OPENID_SIGNUP:-false}
+    deploy:
+      resources:
+        limits:
+          cpus: '0.9'
+          memory: 300M
+        reservations:
+          cpus: '0.1'
+          memory: 100M
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
