@@ -57,7 +57,7 @@ jobs:
       - name: Setup SSH and Deploy services
         working-directory: ./compose
         run: |
-          # Setup SSH Keys
+          echo "Setting up SSH keys..."
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
           echo "${SSH_PRIVATE_KEY}" > ~/.ssh/google_compute_engine
@@ -68,7 +68,6 @@ jobs:
           APP_NAME=${{ vars.APP_NAME || 'gitea' }}
           INSTANCE_NAME=${ORG_NAME}-${APP_NAME}-${ENVIRONMENT}
 
-          # Create directories on the instance
           echo "Creating directories on the instance..."
           gcloud compute ssh ${SSH_USER}@${INSTANCE_NAME} --tunnel-through-iap --quiet \
             --zone ${ZONE} \
@@ -77,15 +76,30 @@ jobs:
               sudo mkdir -p /data/gitea/{data,config} && \
               sudo chown -R 1000:1000 /data/gitea \
             "
-          # Establish SSH Tunnel
-          echo "Establishing SSH tunnel..."
-          gcloud compute ssh ${SSH_USER}@${INSTANCE_NAME} --tunnel-through-iap --quiet \
-            --zone ${ZONE} \
-            --project ${PROJECT_ID} \
-            --ssh-flag='-qNf -L 12375:127.0.0.1:2375'
 
-          # Deploy Docker Compose services
-          echo "${DOCKER_COMPOSE_ENV_FILE}" > .env
+          echo "Establishing SSH tunnel..."
+          MAX_RETRY=3
+          for ((RETRY=1; RETRY<=MAX_RETRY; RETRY++)); do
+            gcloud compute ssh ${SSH_USER}@${INSTANCE_NAME} --tunnel-through-iap --quiet \
+              --zone ${ZONE} \
+              --project ${PROJECT_ID} \
+              --ssh-flag='-qNf -L 12375:127.0.0.1:2375'
+            sleep 5
+            TUNNEL_PID=$(pgrep -f "ssh.*12375:127.0.0.1:2375")
+            if [[ -n "${TUNNEL_PID}" ]]; then
+              echo "SSH tunnel established."
+              break
+            fi
+            echo "SSH tunnel failed to establish. Retrying ($RETRY/$MAX_RETRY)..."
+            sleep 10
+          done
+          if [[ -z "${TUNNEL_PID}" ]]; then
+            echo "Error: SSH tunnel to Docker daemon failed to establish after $MAX_RETRY attempts."
+            exit 1
+          fi
+          echo "SSH tunnel established with PID ${TUNNEL_PID}."
+
           echo "Deploying Docker Compose services..."
+          echo "${DOCKER_COMPOSE_ENV_FILE}" > .env
           DOCKER_HOST=tcp://127.0.0.1:12375 docker compose pull --quiet
           DOCKER_HOST=tcp://127.0.0.1:12375 docker compose up --detach --quiet-pull
