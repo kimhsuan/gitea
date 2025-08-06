@@ -65,15 +65,27 @@ jobs:
           echo "${SSH_PUBLIC_KEY}" > ~/.ssh/google_compute_engine.pub
           chmod 644 ~/.ssh/google_compute_engine.pub
 
-          # Establish SSH Tunnel and run Docker Compose
           APP_NAME=${{ vars.APP_NAME || 'gitea' }}
           INSTANCE_NAME=${ORG_NAME}-${APP_NAME}-${ENVIRONMENT}
+
+          # Create directories on the instance
+          echo "Creating directories on the instance..."
+          gcloud compute ssh ${SSH_USER}@${INSTANCE_NAME} --tunnel-through-iap --quiet \
+            --zone ${ZONE} \
+            --project ${PROJECT_ID} \
+            --command " \
+              sudo mkdir -p /data/gitea/{data,config} && \
+              sudo chown -R 1000:1000 /data/gitea \
+            "
+          # Establish SSH Tunnel
+          echo "Establishing SSH tunnel..."
           gcloud compute ssh ${SSH_USER}@${INSTANCE_NAME} --tunnel-through-iap --quiet \
             --zone ${ZONE} \
             --project ${PROJECT_ID} \
             --ssh-flag='-qNf -L 12375:127.0.0.1:2375'
 
           # Deploy Docker Compose services
+          echo "Deploying Docker Compose services..."
           echo "${DOCKER_COMPOSE_ENV_FILE}" > .env
           DOCKER_HOST=tcp://127.0.0.1:12375 docker compose pull --quiet
           DOCKER_HOST=tcp://127.0.0.1:12375 docker compose up --detach --quiet-pull
