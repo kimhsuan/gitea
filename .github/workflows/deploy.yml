@@ -69,7 +69,7 @@ jobs:
           INSTANCE_NAME=${ORG_NAME}-${APP_NAME}-${ENVIRONMENT}
 
           echo "Creating directories on the instance..."
-          MAX_RETRY=3
+          MAX_RETRY=5
           for ((RETRY=1; RETRY<=MAX_RETRY; RETRY++)); do
             gcloud compute ssh ${SSH_USER}@${INSTANCE_NAME} --tunnel-through-iap --quiet \
               --zone ${ZONE} \
@@ -92,7 +92,7 @@ jobs:
           fi
 
           echo "Establishing SSH tunnel..."
-          MAX_RETRY=3
+          MAX_RETRY=5
           for ((RETRY=1; RETRY<=MAX_RETRY; RETRY++)); do
             gcloud compute ssh ${SSH_USER}@${INSTANCE_NAME} --tunnel-through-iap --quiet \
               --zone ${ZONE} \
@@ -105,7 +105,7 @@ jobs:
               break
             fi
             echo "SSH tunnel failed to establish. Retrying (${RETRY}/${MAX_RETRY})..."
-            sleep 10
+            sleep 15
           done
           if [[ -z "${TUNNEL_PID}" ]]; then
             echo "Error: SSH tunnel to Docker daemon failed to establish after ${MAX_RETRY} attempts."
@@ -114,7 +114,7 @@ jobs:
           echo "SSH tunnel established with PID ${TUNNEL_PID}."
 
           echo "Checking Docker daemon connectivity..."
-          MAX_RETRY=3
+          MAX_RETRY=5
           for ((RETRY=1; RETRY<=MAX_RETRY; RETRY++)); do
             DOCKER_HOST=tcp://127.0.0.1:12375 docker info > /dev/null 2>&1
             if [[ $? -eq 0 ]]; then
@@ -122,7 +122,7 @@ jobs:
               break
             fi
             echo "Unable to connect to Docker daemon. Retrying (${RETRY}/${MAX_RETRY})..."
-            sleep 10
+            sleep 60
           done
           if [[ $? -ne 0 ]]; then
             echo "Error: Unable to connect to Docker daemon via SSH tunnel after ${MAX_RETRY} attempts."
