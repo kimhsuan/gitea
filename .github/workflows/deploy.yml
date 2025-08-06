@@ -69,13 +69,27 @@ jobs:
           INSTANCE_NAME=${ORG_NAME}-${APP_NAME}-${ENVIRONMENT}
 
           echo "Creating directories on the instance..."
-          gcloud compute ssh ${SSH_USER}@${INSTANCE_NAME} --tunnel-through-iap --quiet \
-            --zone ${ZONE} \
-            --project ${PROJECT_ID} \
-            --command " \
-              sudo mkdir -p /data/gitea/{data,config} && \
-              sudo chown -R 1000:1000 /data/gitea \
-            "
+          MAX_RETRY=3
+          for ((RETRY=1; RETRY<=MAX_RETRY; RETRY++)); do
+            gcloud compute ssh ${SSH_USER}@${INSTANCE_NAME} --tunnel-through-iap --quiet \
+              --zone ${ZONE} \
+              --project ${PROJECT_ID} \
+              --command " \
+                sudo mkdir -p /data/gitea/{data,config} && \
+                sudo chown -R 1000:1000 /data/gitea \
+              "
+            SSH_EXIT_CODE=$?
+            if [[ ${SSH_EXIT_CODE} -eq 0 ]]; then
+              echo "Directories created successfully."
+              break
+            fi
+            echo "Failed to create directories. Retrying (${RETRY}/${MAX_RETRY})..."
+            sleep 20
+          done
+          if [[ ${SSH_EXIT_CODE} -ne 0 ]]; then
+            echo "Error: Failed to create directories on the instance after ${MAX_RETRY} attempts."
+            exit 1
+          fi
 
           echo "Establishing SSH tunnel..."
           MAX_RETRY=3
@@ -90,11 +104,11 @@ jobs:
               echo "SSH tunnel established."
               break
             fi
-            echo "SSH tunnel failed to establish. Retrying ($RETRY/$MAX_RETRY)..."
+            echo "SSH tunnel failed to establish. Retrying (${RETRY}/${MAX_RETRY})..."
             sleep 10
           done
           if [[ -z "${TUNNEL_PID}" ]]; then
-            echo "Error: SSH tunnel to Docker daemon failed to establish after $MAX_RETRY attempts."
+            echo "Error: SSH tunnel to Docker daemon failed to establish after ${MAX_RETRY} attempts."
             exit 1
           fi
           echo "SSH tunnel established with PID ${TUNNEL_PID}."
