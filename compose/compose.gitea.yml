@@ -13,11 +13,14 @@ services:
       GITEA__server__DISABLE_SSH: ${GITEA__server__DISABLE_SSH:-true}
       GITEA__server__DOMAIN: ${GITEA__server__DOMAIN:-localhost}
       GITEA__server__ROOT_URL: ${GITEA__server__ROOT_URL}
+      GITEA__server__LFS_JWT_SECRET: ${GITEA__server__LFS_JWT_SECRET}
+      GITEA__security__INTERNAL_TOKEN: ${GITEA__security__INTERNAL_TOKEN}
       GITEA__service__DISABLE_REGISTRATION: ${GITEA__service__DISABLE_REGISTRATION:-true}
       GITEA__service__REQUIRE_SIGNIN_VIEW: ${GITEA__service__REQUIRE_SIGNIN_VIEW:-true}
       GITEA__service__DEFAULT_KEEP_EMAIL_PRIVATE: ${GITEA__service__DEFAULT_KEEP_EMAIL_PRIVATE:-true}
       GITEA__openid__ENABLE_OPENID_SIGNIN: ${GITEA__openid__ENABLE_OPENID_SIGNIN:-false}
       GITEA__openid__ENABLE_OPENID_SIGNUP: ${GITEA__openid__ENABLE_OPENID_SIGNUP:-false}
+      GITEA__oauth2__JWT_SECRET: ${GITEA__oauth2__JWT_SECRET}
     deploy:
       resources:
         limits:
